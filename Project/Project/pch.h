@@ -10,6 +10,7 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+#include <Mmsystem.h>
 
 #include <string>
 #include <wrl.h>
@@ -27,6 +28,8 @@ using namespace DirectX;
 using namespace DirectX::PackedVector;
 
 using Microsoft::WRL::ComPtr;
+
+#pragma comment(lib, "winmm.lib")
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d12.lib")

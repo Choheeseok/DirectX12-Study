@@ -29,6 +29,8 @@ GameFramework::GameFramework()
 
 	m_nWndClientWidth = FRAME_BUFFER_WIDTH;
 	m_nWndClientHeight = FRAME_BUFFER_HEIGHT;
+
+	_tcscpy_s(m_pszFrameRate, _T("Project ("));
 }
 
 GameFramework::~GameFramework()
@@ -375,6 +377,9 @@ void GameFramework::WaitForGpuComplete()
 
 void GameFramework::FrameAdvance()
 {
+	m_Timer.Tick(0.0f);
+	// 타이머의 시간이 갱신되도록 하고 프레임 레이트를 계산한다.
+
 	ProcessInput();
 
 	AnimateObjects();
@@ -450,4 +455,11 @@ void GameFramework::FrameAdvance()
 	// 스왑체인을 프리젠트한다.
 	// 프리젠트를 하면 현재 렌더 타겟(후면버퍼)의 내용이 전면버퍼로 옮겨지고 렌더 타겟 인덱스가 바뀔 것이다.
 	m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
+
+	::_itow_s(m_Timer.m_nCurrentFrameRate, (m_pszFrameRate + 9), 40, 10);
+	::wcscat_s((m_pszFrameRate + 9), 40, _T(" FPS)"));
+	// 현재의 프레임 레이트를 문자열로 가져와서 주 윈도우의 타이틀로 출력한다.
+	// m_pszBuffer 문자열이 "Project ("로 초기화되었으므로 (m_pszFrameRate+9)에서부터 프레임 레이트를 문자열로 출력하여 “ FPS)” 문자열과 합친다
+	m_Timer.GetFrameRate((LPSTR)(m_pszFrameRate + 9), 40);
+	::SetWindowText(m_hWnd, m_pszFrameRate);
 }

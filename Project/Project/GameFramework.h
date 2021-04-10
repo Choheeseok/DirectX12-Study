@@ -1,4 +1,6 @@
 #pragma once
+#include "Timer.h"
+
 class GameFramework
 {
 private:
@@ -50,6 +52,12 @@ private:
 	D3D12_VIEWPORT m_d3dViewport;
 	D3D12_RECT m_d3dScissorRect;
 	// 뷰포트와 시저렉트이다.
+
+	Timer m_Timer;
+	// 게임 프레임워크에서 사용할 타이머
+
+	_TCHAR m_pszFrameRate[50];
+	// 프레임 레이트를 주 윈도우의 캡션에 출력하기 위한 문자열
 
 #if defined(_DEBUG)
 	ID3D12Debug* m_pd3dDebugController;
