@@ -96,4 +96,6 @@ public:
 	void WaitForGpuComplete();
 	// CPU와 GPU를 동기화하는 함수이다.
 	void FrameAdvance();
+
+	void ChangeSwapChainState();
 };
