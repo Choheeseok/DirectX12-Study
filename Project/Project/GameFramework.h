@@ -39,9 +39,6 @@ private:
 	UINT64 m_nFenceValues[m_nSwapChainBuffers];
 	HANDLE m_hFenceEvent;
 
-	D3D12_VIEWPORT m_d3dViewport;
-	D3D12_RECT m_d3dScissorRect;
-
 	Timer m_Timer;
 
 	_TCHAR m_pszFrameRate[50];
@@ -51,6 +48,9 @@ private:
 #endif
 
 	Scene* m_pScene;
+
+public:
+	Camera* m_pCamera = NULL;
 
 public:
 	GameFramework();

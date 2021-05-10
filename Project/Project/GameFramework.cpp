@@ -45,7 +45,6 @@ bool GameFramework::OnCreate(HINSTANCE hInstance, HWND hMainWnd)
 	m_hInstance = hInstance;
 	m_hWnd = hMainWnd;
 
-	// Direct3D 딥이스, 명령 큐와 명령 리스트, 스왑 체인 등을 생성하는 함수를 호출한다.
 	CreateDirect3DDevice();
 	CreateCommandQueueAndList();
 	CreateSwapChain();
@@ -54,7 +53,6 @@ bool GameFramework::OnCreate(HINSTANCE hInstance, HWND hMainWnd)
 	CreateDepthStencilView();
 
 	BuildObjects();
-	// 렌더링할 객체(게임 월드 객체)를 생성한다.
 
 	return true;
 }
@@ -109,7 +107,6 @@ void GameFramework::CreateSwapChain()
 	dxgiSwapChainDesc.SampleDesc.Count = (m_bMsaa4xEnable) ? 4 : 1;
 	dxgiSwapChainDesc.SampleDesc.Quality = (m_bMsaa4xEnable) ? (m_nMsaa4xQualityLevels - 1) : 0;
 	dxgiSwapChainDesc.Windowed = TRUE;
-	//전체화면 모드에서 바탕화면의 해상도를 스왑체인(후면버퍼)의 크기에 맞게 변경한다.
 	dxgiSwapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 	HRESULT hResult = m_pdxgiFactory->CreateSwapChain(m_pd3dCommandQueue,
@@ -160,15 +157,6 @@ void GameFramework::CreateDirect3DDevice()
 	m_pd3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&m_pd3dFence);
 
 	m_hFenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
-
-	m_d3dViewport.TopLeftX = 0;
-	m_d3dViewport.TopLeftY = 0;
-	m_d3dViewport.Width = static_cast<float>(m_nWndClientWidth);
-	m_d3dViewport.Height = static_cast<float>(m_nWndClientHeight);
-	m_d3dViewport.MinDepth = 0.0f;
-	m_d3dViewport.MaxDepth = 1.0f;
-
-	m_d3dScissorRect = { 0, 0, m_nWndClientWidth, m_nWndClientHeight };
 
 	if (pd3dAdapter) pd3dAdapter->Release();
 }
@@ -268,19 +256,28 @@ void GameFramework::BuildObjects()
 {
 	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 
-	//씬 객체를 생성하고 씬에 포함될 게임 객체들을 생성한다.
+	// 카메랄 객체를 생성하여 뷰포트, 씨저 사각형, 투영 변환 행렬, 카메라 변환 행렬을 생성하고 설정한다.
+	m_pCamera = new Camera();
+	m_pCamera->SetViewport(0, 0, m_nWndClientWidth, m_nWndClientHeight, 0.0f, 1.0f);
+	m_pCamera->SetScissorRect(0, 0, m_nWndClientWidth, m_nWndClientHeight);
+	m_pCamera->GenerateProjectionMatrix(
+		1.0f, 500.0f, float(m_nWndClientWidth) / float(m_nWndClientHeight), 90.0f);
+	m_pCamera->GenerateViewMatrix(
+		XMFLOAT3(0.0f, 0.0f, -2.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
+
+	// 씬 객체를 생성하고 씬에 포함될 게임 객체들을 생성한다.
 	m_pScene = new Scene();
 	m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
 
-	//씬 객체를 생성하기 위하여 필요한 그래픽 명령 리스트들을 명령 큐에 추가한다.
+	// 씬 객체를 생성하기 위하여 필요한 그래픽 명령 리스트들을 명령 큐에 추가한다.
 	m_pd3dCommandList->Close();
 	ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
 	m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
 
-	//그래픽 명령 리스트들이 모두 실행될 때까지 기다린다.
+	// 그래픽 명령 리스트들이 모두 실행될 때까지 기다린다.
 	WaitForGpuComplete();
 
-	//그래픽 리소스들을 생성하는 과정에 생성된 업로드 버퍼들을 소멸시킨다.
+	// 그래픽 리소스들을 생성하는 과정에 생성된 업로드 버퍼들을 소멸시킨다.
 	if (m_pScene) m_pScene->ReleaseUploadBuffers();
 
 	// m_Timer.Reset();
@@ -402,9 +399,6 @@ void GameFramework::FrameAdvance()
 	HRESULT hResult = m_pd3dCommandAllocator->Reset();
 	hResult = m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 
-	m_pd3dCommandList->RSSetViewports(1, &m_d3dViewport);
-	m_pd3dCommandList->RSSetScissorRects(1, &m_d3dScissorRect);
-
 	D3D12_RESOURCE_BARRIER d3dResourceBarrier;
 	::ZeroMemory(&d3dResourceBarrier, sizeof(D3D12_RESOURCE_BARRIER));
 	d3dResourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -430,7 +424,7 @@ void GameFramework::FrameAdvance()
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle,
 		D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
-	if (m_pScene) m_pScene->Render(m_pd3dCommandList);
+	if (m_pScene) m_pScene->Render(m_pd3dCommandList, m_pCamera);
 
 	d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	d3dResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
