@@ -1,10 +1,8 @@
 #pragma once
 
-// 정점을 표현하기 위한클래스를 선언한다.
 class Vertex
 {
 protected:
-	// 정점의 위치 벡터이다(모든 정점은 최소한 위치 벡터를 가져야 한다).
 	XMFLOAT3 m_xmf3Position;
 
 public:
@@ -16,7 +14,6 @@ public:
 class DiffusedVertex : public Vertex
 {
 protected:
-	// 정점의 색상이다.
 	XMFLOAT4 m_xmf4Diffuse;
 
 public:
@@ -68,4 +65,15 @@ class TriangleMesh : public Mesh
 public:
 	TriangleMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual ~TriangleMesh() {}
+};
+
+class CubeMeshDiffused : public Mesh
+{
+public:
+	// 직육면체의 가로, 세로, 깊이의 길이를 지정하여 직육면체 메쉬를 생성한다.
+	CubeMeshDiffused(
+		ID3D12Device* pd3dDevice,
+		ID3D12GraphicsCommandList* pd3dCommandList,
+		float fWidth = 2.0f, float fHeight = 2.0f, float fDepth = 2.0f);
+	virtual ~CubeMeshDiffused();
 };

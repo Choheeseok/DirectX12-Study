@@ -38,6 +38,12 @@ using Microsoft::WRL::ComPtr;
 #define FRAME_BUFFER_WIDTH  640
 #define FRAME_BUFFER_HEIGHT 480
 
+#define RANDOM_COLOR \
+XMFLOAT4(rand() / float(RAND_MAX), \
+rand()/ float(RAND_MAX), \
+rand() / float(RAND_MAX), \
+rand() / float(RAND_MAX))
+
 #define _WITH_SWAPCHAIN_FULLSCREEN_STATE
 
 #endif
