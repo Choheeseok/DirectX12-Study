@@ -228,3 +228,119 @@ void DiffusedShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature*
 
 	Shader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 }
+
+ObjectsShader::ObjectsShader()
+{
+}
+
+ObjectsShader::~ObjectsShader()
+{
+}
+
+D3D12_INPUT_LAYOUT_DESC ObjectsShader::CreateInputLayout()
+{
+	UINT nInputElementDescs = 2;
+	D3D12_INPUT_ELEMENT_DESC* pd3dInputElementDescs =
+		new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
+
+	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[1] = { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12,
+	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+
+	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
+	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;
+	d3dInputLayoutDesc.NumElements = nInputElementDescs;
+
+	return d3dInputLayoutDesc;
+}
+
+D3D12_SHADER_BYTECODE ObjectsShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
+{
+	return(Shader::CompileShaderFromFile(L"Shaders.hlsl", "VSDiffused", "vs_5_1", ppd3dShaderBlob));
+}
+
+D3D12_SHADER_BYTECODE ObjectsShader::CreatePixelShader(ID3DBlob** ppd3dShaderBlob)
+{
+	return(Shader::CompileShaderFromFile(L"Shaders.hlsl", "PSDiffused", "ps_5_1", ppd3dShaderBlob));
+}
+
+void ObjectsShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature)
+{
+	m_nPipelineStates = 1;
+	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
+
+	Shader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+}
+
+void ObjectsShader::ReleaseUploadBuffers()
+{
+	if (m_ppObjects) {
+		for (int i = 0; i < m_nObjects; i++)
+			m_ppObjects[i]->ReleaseUploadBuffers();
+	}
+}
+
+void ObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	//가로x세로x높이가 12x12x12인 정육면체 메쉬를 생성한다.
+	CubeMeshDiffused* pCubeMesh = new CubeMeshDiffused(
+		pd3dDevice, pd3dCommandList, 12.0f, 12.0f, 12.0f);
+
+	int xObjects = 10;
+	int yObjects = 10;
+	int zObjects = 10;
+	int i = 0;
+
+	//x-축, y-축, z-축으로 21개씩 총 21 x 21 x 21 = 9261개의 정육면체를 생성하고 배치한다.
+	m_nObjects = (xObjects * 2 + 1) * (yObjects * 2 + 1) * (zObjects * 2 + 1);
+
+	m_ppObjects = new GameObject * [m_nObjects];
+
+	float fxPitch = 12.0f * 2.5f;
+	float fyPitch = 12.0f * 2.5f;
+	float fzPitch = 12.0f * 2.5f;
+
+	RotatingObject* pRotatingObject = NULL;
+	for (int x = -xObjects; x <= xObjects; x++) {
+		for (int y = -yObjects; y <= yObjects; y++) {
+			for (int z = -zObjects; z <= zObjects; z++) {
+				pRotatingObject = new RotatingObject();
+				pRotatingObject->SetMesh(pCubeMesh);
+				//각 정육면체 객체의 위치를 설정한다.
+				pRotatingObject->SetPosition(fxPitch * x, fyPitch * y, fzPitch * z);
+				pRotatingObject->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
+				pRotatingObject->SetRotationSpeed(10.0f * (i % 10) + 3.0f);
+				m_ppObjects[i++] = pRotatingObject;
+			}
+		}
+	}
+
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+}
+
+void ObjectsShader::AnimateObjects(float fTimeElapsed)
+{
+	for (int i = 0; i < m_nObjects; i++)
+		m_ppObjects[i]->Animate(fTimeElapsed);
+}
+
+void ObjectsShader::ReleaseObjects()
+{
+	if (m_ppObjects) {
+		for (int i = 0; i < m_nObjects; i++) {
+			if (m_ppObjects[i])
+				delete m_ppObjects[i];
+		}
+		delete[] m_ppObjects;
+	}
+}
+
+void ObjectsShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, Camera* pCamera)
+{
+	Shader::Render(pd3dCommandList, pCamera);
+	for (int i = 0; i < m_nObjects; i++) {
+		if (m_ppObjects[i])
+			m_ppObjects[i]->Render(pd3dCommandList, pCamera);
+	}
+}

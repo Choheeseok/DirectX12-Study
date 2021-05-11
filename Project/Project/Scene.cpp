@@ -24,23 +24,10 @@ void Scene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 {
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
 
-	//가로x세로x깊이가 12x12x12인 정육면체 메쉬를 생성한다.
-	CubeMeshDiffused* pCubeMesh =
-		new CubeMeshDiffused(pd3dDevice, pd3dCommandList, 12.0f, 12.0f, 12.0f);
-
-	m_nObjects = 1;
-	m_ppObjects = new GameObject * [m_nObjects];
-
-	RotatingObject* pRotatingObject = new RotatingObject();
-	pRotatingObject->SetMesh(pCubeMesh);
-
-	DiffusedShader* pShader = new DiffusedShader();
-	pShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);
-
-	pRotatingObject->SetShader(pShader);
-
-	m_ppObjects[0] = pRotatingObject;
+	m_nShaders = 1;
+	m_pShaders = new ObjectsShader[m_nShaders];
+	m_pShaders[0].CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	m_pShaders[0].BuildObjects(pd3dDevice, pd3dCommandList);
 }
 
 void Scene::ReleaseObjects()
@@ -48,21 +35,18 @@ void Scene::ReleaseObjects()
 	if (m_pd3dGraphicsRootSignature)
 		m_pd3dGraphicsRootSignature->Release();
 
-	if (m_ppObjects) {
-		for (int i = 0; i < m_nObjects; i++)
-			if (m_ppObjects[i])
-				delete m_ppObjects[i];
-		delete[] m_ppObjects;
+	for (int i = 0; i < m_nShaders; i++) {
+		m_pShaders[i].ReleaseShaderVariables();
+		m_pShaders[i].ReleaseObjects();
 	}
+	if (m_pShaders)
+		delete[] m_pShaders;
 }
 
 void Scene::ReleaseUploadBuffers()
 {
-	if (m_ppObjects) {
-		for (int i = 0; i < m_nObjects; i++)
-			if (m_ppObjects[i])
-				m_ppObjects[i]->ReleaseUploadBuffers();
-	}
+	for (int i = 0; i < m_nShaders; i++)
+		m_pShaders[i].ReleaseUploadBuffers();
 }
 
 ID3D12RootSignature* Scene::GetGraphicsRootSignature()
@@ -124,8 +108,8 @@ bool Scene::ProcessInput()
 
 void Scene::AnimateObjects(float fTimeElapsed)
 {
-	for (int i = 0; i < m_nObjects; i++) {
-		m_ppObjects[i]->Animate(fTimeElapsed);
+	for (int i = 0; i < m_nShaders; i++) {
+		m_pShaders[i].AnimateObjects(fTimeElapsed);
 	}
 }
 
@@ -133,12 +117,9 @@ void Scene::Render(ID3D12GraphicsCommandList* pd3dCommandList, Camera* pCamera)
 {
 	pCamera->SetViewportsAndScissorRects(pd3dCommandList);
 	pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
+	pCamera->UpdateShaderVariables(pd3dCommandList);
 
-	if (pCamera)
-		pCamera->UpdateShaderVariables(pd3dCommandList);
-
-	//씬을 렌더링하는 것은 씬을 구성하는 게임 객체(셰이더를 포함하는 객체)들을 렌더링하는 것이다.
-	for (int i = 0; i < m_nObjects; i++) {
-		m_ppObjects[i]->Render(pd3dCommandList, pCamera);
+	for (int i = 0; i < m_nShaders; i++) {
+		m_pShaders[i].Render(pd3dCommandList, pCamera);
 	}
 }
